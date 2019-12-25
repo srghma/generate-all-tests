@@ -1,3 +1,5 @@
 .stack-work/
 generate-all-tests.cabal
 *~
+*.log
+*.cache
