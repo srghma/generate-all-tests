@@ -19,5 +19,5 @@ hsPkgs.shellFor {
   # they use a nix-shell --pure. Normally you would BYO cabal-install.
   buildInputs = with pkgs; [ cabal-install nix zlib ];
   exactDeps = true;
-  STACK_IN_NIX_SHELL = true;
+  # STACK_IN_NIX_SHELL = true;
 }
