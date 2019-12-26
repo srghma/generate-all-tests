@@ -3,3 +3,5 @@ generate-all-tests.cabal
 *~
 *.log
 *.cache
+dist-newstyle
+cabal.project.local
