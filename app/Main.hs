@@ -9,12 +9,12 @@ module Main where
 -- TODO: use http://hackage.haskell.org/package/managed instead of turtle
 -- TODO: dont use system-filepath (depreced, though should not), dont use filepath, use https://hackage.haskell.org/package/path-io-1.6.0/docs/Path-IO.html waliDirAccumRel
 
+-- import qualified Filesystem.Path.CurrentOS
 import "protolude" Protolude hiding (find)
 import qualified "turtle" Turtle
 import "turtle" Turtle ((</>))
 import qualified "directory" System.Directory
 import qualified "filepath" System.FilePath
--- import qualified Filesystem.Path.CurrentOS
 import "base" Data.String
 import "base" Data.List
 import "text" Data.Text
@@ -59,7 +59,7 @@ type SpecName = [Text] -- e.g. [ FeatureTests, Register, SuccessSpec ]
 specTreeToList :: SpecTree -> [SpecName]
 specTreeToList (It name) = [[name]]
 specTreeToList (Describe name tree) =
-  let output :: [SpecName] = join $ fmap specTreeToList tree
+  let output :: [SpecName] = specTreeToList =<< tree
    in fmap (\(specName :: SpecName) -> name:specName ) output
 
 {-
