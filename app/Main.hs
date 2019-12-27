@@ -105,6 +105,7 @@ specTreeToSpecsWrappedInDecribesAndIt specTreeArr = Data.Text.unlines $ go =<< s
        in describe:output
 
 
+-- TODO: should be named removeCommonLayer
 removeFirstLayer :: SpecTree -> [SpecTree]
 removeFirstLayer arg@(It _ _) = [arg]
 removeFirstLayer (Describe _name tree) = tree
