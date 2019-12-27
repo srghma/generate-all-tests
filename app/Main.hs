@@ -7,7 +7,11 @@
 module Main where
 
 -- TODO: use http://hackage.haskell.org/package/managed instead of turtle
--- TODO: dont use system-filepath (depreced, though should not), dont use filepath, use https://hackage.haskell.org/package/path-io-1.6.0/docs/Path-IO.html waliDirAccumRel
+
+-- TODO
+-- dont use system-filepath (Filesystem.Path module, good lib, turtle is using it,         FilePath is just record)
+-- dont use filepath        (System.FilePath module, bad lib,  directory-tree is using it, FilePath is just String)
+-- use https://hackage.haskell.org/package/path-io-1.6.0/docs/Path-IO.html walkDirAccumRel
 
 -- import qualified Filesystem.Path.CurrentOS
 import "protolude" Protolude hiding (find)
@@ -23,23 +27,25 @@ import qualified "directory-tree" System.Directory.Tree
 import "directory-tree" System.Directory.Tree (DirTree (..), AnchoredDirTree (..))
 import qualified "cases" Cases
 
+type PathToModule = [Text]
+
 data SpecTree
   = Describe Text [SpecTree]
-  | It Text
+  | It Text PathToModule
   deriving (Show)
 
 anyCaseToCamelCase :: Text -> Text
 anyCaseToCamelCase = Cases.process Cases.title Cases.camel -- first letter is always upper
 
-dirTreeToSpecTree :: DirTree a -> IO SpecTree
+dirTreeToSpecTree :: DirTree [Text] -> IO SpecTree
 dirTreeToSpecTree (Failed name err) = Turtle.die $ "Dir tree error: filename " <> show name <> ", error " <> show err
+dirTreeToSpecTree (File name pathToModule) =
+  let name' = anyCaseToCamelCase . toS . System.FilePath.takeBaseName $ name
+  in pure $ It name' pathToModule
 dirTreeToSpecTree (Dir name contents) = do
   output :: [SpecTree] <- traverse dirTreeToSpecTree contents
   let name' = anyCaseToCamelCase . toS $ name
   pure $ Describe name' output
-dirTreeToSpecTree (File name _file) =
-  let name' = anyCaseToCamelCase . toS . System.FilePath.takeBaseName $ name
-  in pure $ It name'
 
 filterDirTreeByFilename :: (String -> Bool) -> DirTree a -> Bool
 filterDirTreeByFilename _ (Dir ('.':_) _) = False
@@ -57,7 +63,7 @@ type SpecName = [Text] -- e.g. [ FeatureTests, Register, SuccessSpec ]
   ]
 -}
 specTreeToList :: SpecTree -> [SpecName]
-specTreeToList (It name) = [[name]]
+specTreeToList (It name _pathToModule) = [[name]]
 specTreeToList (Describe name tree) =
   let output :: [SpecName] = specTreeToList =<< tree
    in fmap (\(specName :: SpecName) -> name:specName ) output
@@ -65,7 +71,7 @@ specTreeToList (Describe name tree) =
 {-
   Example
 
-  > Describe "Registration" [It "Test1", It "Test2"]
+  > [Describe "Registration" [It "Test1", It "Test2"]]
 
   """
   describe "registration" do
@@ -73,7 +79,7 @@ specTreeToList (Describe name tree) =
     it "test2" FeatureTests.Test2.spec
   """
 
-  > Describe "registration" []
+  > [Describe "registration" []]
 
   """
   describe "registration" do
@@ -81,34 +87,50 @@ specTreeToList (Describe name tree) =
   """
 -}
 
-specTreeToSpecsWrappedInDecribesAndIt :: SpecTree -> Text
-specTreeToSpecsWrappedInDecribesAndIt specTree = Data.Text.unlines $ go [] specTree
+specTreeToSpecsWrappedInDecribesAndIt :: [SpecTree] -> Text
+specTreeToSpecsWrappedInDecribesAndIt specTreeArr = Data.Text.unlines $ go =<< specTreeArr
   where
     appendTab :: Text -> Text
     appendTab = Data.Text.append "  "
 
-    go :: [Text] -> SpecTree -> [Text]
-    go pathAccum (It name) =
-      let pathAccum' :: [Text]  = pathAccum ++ [name]
-          moduleNames :: [Text] = fmap (Cases.process Cases.title Cases.camel) pathAccum'
+    go :: SpecTree -> [Text]
+    go (It name fullPath) =
+      let moduleNames :: [Text] = fmap (Cases.process Cases.title Cases.camel) fullPath
           name' :: Text         = Cases.process Cases.lower Cases.whitespace $ fromMaybe name $ Data.Text.stripSuffix "Spec" name
        in pure $ appendTab $ "it \"" <> name' <> "\" " <> Data.Text.intercalate "." moduleNames <> ".spec"
-    go pathAccum (Describe name tree) =
-      let pathAccum' :: [Text] = pathAccum ++ [name]
-          output :: [Text]     = fmap appendTab $ go pathAccum' =<< tree
+    go (Describe name tree) =
+      let output :: [Text]     = fmap appendTab $ go =<< tree
           name' :: Text        = Cases.process Cases.lower Cases.whitespace name
           describe :: Text     = appendTab $ "describe \"" <> name' <> "\" do"
        in describe:output
+
+
+removeFirstLayer :: SpecTree -> [SpecTree]
+removeFirstLayer arg@(It _ _) = [arg]
+removeFirstLayer (Describe _name tree) = tree
 
 main :: IO ()
 main = Turtle.sh $ do
   projectRoot :: Turtle.FilePath <- Turtle.pwd
 
   let testsDir :: Turtle.FilePath = projectRoot </> "src/FeatureTests/"
+  let moduleBaseDir :: Turtle.FilePath = projectRoot </> "src/"
 
-  _base :/ (dirTree :: DirTree ()) <- liftIO $ System.Directory.Tree.readDirectoryWith (const $ pure ()) (Turtle.encodeString testsDir)
+  let fullPathToPathToModule :: System.FilePath.FilePath -> IO PathToModule
+      fullPathToPathToModule fullPath = do
+        let fullPath' :: Turtle.FilePath = Turtle.decodeString fullPath
+        let base :: Turtle.FilePath = moduleBaseDir
+        fullPath'' :: Turtle.FilePath <- maybe (Turtle.die $ "Cannot stripe base " <> show base <> " from path " <> show fullPath) pure $ Turtle.stripPrefix base fullPath'
+        let modulePathWithoutRoot :: [Text] = fmap (toS . Turtle.encodeString)  . Turtle.splitDirectories . Turtle.dropExtension $ fullPath''
+        -- traceShowM modulePathWithoutRoot
+        let modulePathWithoutRoot' :: [Text] = fmap anyCaseToCamelCase modulePathWithoutRoot
+        -- traceShowM modulePathWithoutRoot'
+        pure modulePathWithoutRoot'
 
-  let (dirTreeWithOnlyPurescriptFiles :: DirTree ()) =
+
+  _base :/ (dirTree :: DirTree [Text]) <- liftIO $ System.Directory.Tree.readDirectoryWith fullPathToPathToModule (Turtle.encodeString testsDir)
+
+  let (dirTreeWithOnlyPurescriptFiles :: DirTree [Text]) =
         System.Directory.Tree.filterDir
           (filterDirTreeByFilename
             (\n ->
@@ -130,7 +152,7 @@ main = Turtle.sh $ do
           in "import " <> specPath <> " as " <> specPath
         )
 
-  let specsWrappedInDecribesAndIt :: Text = specTreeToSpecsWrappedInDecribesAndIt specTree
+  let specsWrappedInDecribesAndIt :: Text = specTreeToSpecsWrappedInDecribesAndIt (removeFirstLayer specTree)
 
   let fileContent :: Text = Data.Text.unlines
         [ "module Test.AllTests where"
