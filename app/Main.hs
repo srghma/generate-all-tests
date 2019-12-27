@@ -64,8 +64,8 @@ type SpecName = [Text] -- e.g. [ FeatureTests, Register, SuccessSpec ]
 -}
 specTreeToList :: SpecTree -> [SpecName]
 specTreeToList (It name _pathToModule) = [[name]]
-specTreeToList (Describe name tree) =
-  let output :: [SpecName] = specTreeToList =<< tree
+specTreeToList (Describe name treeArr) =
+  let output :: [SpecName] = specTreeToList =<< treeArr
    in fmap (\(specName :: SpecName) -> name:specName ) output
 
 {-
@@ -98,17 +98,19 @@ specTreeToSpecsWrappedInDecribesAndIt specTreeArr = Data.Text.unlines $ go =<< s
       let moduleNames :: [Text] = fmap (Cases.process Cases.title Cases.camel) fullPath
           name' :: Text         = Cases.process Cases.lower Cases.whitespace $ fromMaybe name $ Data.Text.stripSuffix "Spec" name
        in pure $ appendTab $ "it \"" <> name' <> "\" " <> Data.Text.intercalate "." moduleNames <> ".spec"
-    go (Describe name tree) =
-      let output :: [Text]     = fmap appendTab $ go =<< tree
+    go (Describe name treeArr) =
+      let output :: [Text]     = fmap appendTab $ go =<< treeArr
           name' :: Text        = Cases.process Cases.lower Cases.whitespace name
           describe :: Text     = appendTab $ "describe \"" <> name' <> "\" do"
        in describe:output
 
 
--- TODO: should be named removeCommonLayer
-removeFirstLayer :: SpecTree -> [SpecTree]
-removeFirstLayer arg@(It _ _) = [arg]
-removeFirstLayer (Describe _name tree) = tree
+removeCommonLayer :: SpecTree -> [SpecTree]
+removeCommonLayer tree = go [tree]
+  where
+    go :: [SpecTree] -> [SpecTree]
+    go [Describe _name treeArr] = go treeArr
+    go treeArr = treeArr
 
 main :: IO ()
 main = Turtle.sh $ do
@@ -153,7 +155,7 @@ main = Turtle.sh $ do
           in "import " <> specPath <> " as " <> specPath
         )
 
-  let specsWrappedInDecribesAndIt :: Text = specTreeToSpecsWrappedInDecribesAndIt (removeFirstLayer specTree)
+  let specsWrappedInDecribesAndIt :: Text = specTreeToSpecsWrappedInDecribesAndIt (removeCommonLayer specTree)
 
   let fileContent :: Text = Data.Text.unlines
         [ "module Test.AllTests where"
