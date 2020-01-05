@@ -13,6 +13,9 @@ module Main where
 -- dont use filepath        (System.FilePath module, bad lib,  directory-tree is using it, FilePath is just String)
 -- use https://hackage.haskell.org/package/path-io-1.6.0/docs/Path-IO.html walkDirAccumRel
 
+-- TODO
+-- use https://hackage.haskell.org/package/recursion-schemes
+
 -- import qualified Filesystem.Path.CurrentOS
 import "protolude" Protolude hiding (find)
 import qualified "turtle" Turtle
