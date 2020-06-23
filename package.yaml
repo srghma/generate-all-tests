@@ -1,6 +1,6 @@
-name:                generate-all-tests
+name:                generate-halogen-css-modules
 version:             0.1.0.0
-github:              "srghma/generate-all-tests"
+github:              "srghma/generate-halogen-css-modules"
 license:             BSD3
 author:              "srghma"
 maintainer:          "srghma@gmail.com"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/srghma/generate-all-tests#readme>
+description:         Please see the README on GitHub at <https://github.com/srghma/generate-halogen-css-modules#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -34,7 +34,7 @@ library:
   source-dirs: src
 
 executables:
-  generate-all-tests-exe:
+  generate-halogen-css-modules-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -42,10 +42,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - generate-all-tests
+    - generate-halogen-css-modules
 
 tests:
-  generate-all-tests-test:
+  generate-halogen-css-modules-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -53,4 +53,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - generate-all-tests
+    - generate-halogen-css-modules
