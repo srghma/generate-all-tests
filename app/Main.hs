@@ -115,24 +115,23 @@ removeCommonLayer tree = go [tree]
     go [Describe _name treeArr] = go treeArr
     go treeArr = treeArr
 
+let fullPathToPathToModule :: System.FilePath.FilePath -> IO PathToModule
+    fullPathToPathToModule fullPath = do
+      let fullPath' :: Turtle.FilePath = Turtle.decodeString fullPath
+      let base :: Turtle.FilePath = moduleBaseDir
+      fullPath'' :: Turtle.FilePath <- maybe (Turtle.die $ "Cannot stripe base " <> show base <> " from path " <> show fullPath) pure $ Turtle.stripPrefix base fullPath'
+      let modulePathWithoutRoot :: [Text] = fmap (toS . Turtle.encodeString)  . Turtle.splitDirectories . Turtle.dropExtension $ fullPath''
+      -- traceShowM modulePathWithoutRoot
+      let modulePathWithoutRoot' :: [Text] = fmap anyCaseToCamelCase modulePathWithoutRoot
+      -- traceShowM modulePathWithoutRoot'
+      pure modulePathWithoutRoot'
+
 main :: IO ()
 main = Turtle.sh $ do
   projectRoot :: Turtle.FilePath <- Turtle.pwd
 
   let testsDir :: Turtle.FilePath = projectRoot </> "src/FeatureTests/"
   let moduleBaseDir :: Turtle.FilePath = projectRoot </> "src/"
-
-  let fullPathToPathToModule :: System.FilePath.FilePath -> IO PathToModule
-      fullPathToPathToModule fullPath = do
-        let fullPath' :: Turtle.FilePath = Turtle.decodeString fullPath
-        let base :: Turtle.FilePath = moduleBaseDir
-        fullPath'' :: Turtle.FilePath <- maybe (Turtle.die $ "Cannot stripe base " <> show base <> " from path " <> show fullPath) pure $ Turtle.stripPrefix base fullPath'
-        let modulePathWithoutRoot :: [Text] = fmap (toS . Turtle.encodeString)  . Turtle.splitDirectories . Turtle.dropExtension $ fullPath''
-        -- traceShowM modulePathWithoutRoot
-        let modulePathWithoutRoot' :: [Text] = fmap anyCaseToCamelCase modulePathWithoutRoot
-        -- traceShowM modulePathWithoutRoot'
-        pure modulePathWithoutRoot'
-
 
   _base :/ (dirTree :: DirTree [Text]) <- liftIO $ System.Directory.Tree.readDirectoryWith fullPathToPathToModule (Turtle.encodeString testsDir)
 
